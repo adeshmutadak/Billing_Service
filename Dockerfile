@@ -8,9 +8,13 @@ COPY DTO/ DTO/
 COPY Entities/ Entities/
 COPY Service/ Service/
 COPY MilkBilling/ MilkBilling/
+COPY Repository/ Repository/    # <-- Add this line
 
 # Restore main project
 RUN dotnet restore MilkBilling/MilkBilling.csproj
+
+# Copy all source code
+COPY . .
 
 # Publish main project
 RUN dotnet publish MilkBilling/MilkBilling.csproj -c Release -o /app
