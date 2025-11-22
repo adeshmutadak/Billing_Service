@@ -1,22 +1,25 @@
 # --- Build Stage ---
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy only project file first
+# Copy all project files
+COPY Common/*.csproj Common/
+COPY DTO/*.csproj DTO/
+COPY Entities/*.csproj Entities/
+COPY Service/*.csproj Service/
 COPY MilkBilling/*.csproj MilkBilling/
 
-# Restore dependencies
+# Restore main project
 RUN dotnet restore MilkBilling/MilkBilling.csproj
 
-# Copy the full source
+# Copy all source code
 COPY . .
 
-# Publish build
+# Publish main project
 RUN dotnet publish MilkBilling/MilkBilling.csproj -c Release -o /app
 
-
 # --- Runtime Stage ---
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
 # Copy published app
