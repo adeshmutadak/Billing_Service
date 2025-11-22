@@ -2,18 +2,15 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy all project files
-COPY Common/*.csproj Common/
-COPY DTO/*.csproj DTO/
-COPY Entities/*.csproj Entities/
-COPY Service/*.csproj Service/
-COPY MilkBilling/*.csproj MilkBilling/
+# Copy all project folders
+COPY Common/ Common/
+COPY DTO/ DTO/
+COPY Entities/ Entities/
+COPY Service/ Service/
+COPY MilkBilling/ MilkBilling/
 
 # Restore main project
 RUN dotnet restore MilkBilling/MilkBilling.csproj
-
-# Copy all source code
-COPY . .
 
 # Publish main project
 RUN dotnet publish MilkBilling/MilkBilling.csproj -c Release -o /app
