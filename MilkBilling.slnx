@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Project Path="Common/Common.csproj" />
+  <Project Path="DTO/Dto.csproj" Id="ad093041-55a4-45ec-81e6-5172d82c4572" />
+  <Project Path="Entities/Entities.csproj" />
+  <Project Path="MilkBilling/MilkBilling.csproj" />
+  <Project Path="Repository/Repository.csproj" />
+  <Project Path="Service/Service.csproj" />
+</Solution>
