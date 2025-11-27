@@ -20,13 +20,64 @@ namespace MilkBilling.Controllers
             _fileService= fileService;
         }
 
-        ///Get All Customers
+        /// <summary>
+        /// Get All Customer
+        /// </summary>
+        /// <returns></returns>
         [Authorize]
         [HttpGet]
         public async Task<GeneralResponse<List<CustomerListDto>>> GetCustomers()
         {
-            return await _customerService.GetAllCustomersAsync();
+            int userId = int.Parse(User.FindFirst("UserId")!.Value);
+            return await _customerService.GetAllCustomersAsync(userId);
         }
+
+
+
+        /// <summary>
+        /// Add Customer 
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPost]
+        public async Task<GeneralResponse<CustomerListDto>> AddCustomer(AddCustomerRequestDto dto)
+        {
+            return await _customerService.AddCustomerAsync(dto);
+        }
+
+        /// <summary>
+        /// Update Customer
+        /// </summary>
+        /// <param name="dto"></param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPut]
+        public async Task<GeneralResponse<CustomerListDto>> UpdateCustomer(UpdateCustomerRequestDto dto)
+        {
+            return await _customerService.UpdateCustomerAsync(dto);
+        }
+
+        /// <summary>
+        /// Get customer based on Id
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpGet("{id}")]
+        public async Task<GeneralResponse<CustomerListDto>> GetCustomerById(int id)
+        {
+            return await _customerService.GetCustomerByIdAsync(id);
+        }
+
+
+        [Authorize]
+        [HttpDelete("{id}")]
+        public async Task<GeneralResponse<string>> DeleteCustomer(int id)
+        {
+            return await _customerService.DeleteCustomerAsync(id);
+        }
+
 
     }
 }

@@ -24,5 +24,36 @@ namespace Repository
                 .Where(c => c.IsDeleted == false || c.IsDeleted == null)
                 .ToListAsync();
         }
+        public async Task<List<Customer>> GetAllCustomersAsync(int userId)
+        {
+            return await _context.Customers
+                .Where(c =>
+                    (c.IsDeleted == false || c.IsDeleted == null) &&
+                     c.UserId == userId
+                )
+                .ToListAsync();
+        }
+
+
+        public async Task<Customer> AddCustomerAsync(Customer customer)
+        {
+            _context.Customers.Add(customer);
+            await _context.SaveChangesAsync();
+            return customer;
+        }
+
+
+        public async Task<Customer?> GetCustomerByIdAsync(int id)
+        {
+            return await _context.Customers
+                .FirstOrDefaultAsync(c => c.CustomerId == id && (c.IsDeleted == false || c.IsDeleted == null));
+        }
+
+        public async Task UpdateCustomerAsync(Customer customer)
+        {
+            _context.Customers.Update(customer);
+            await _context.SaveChangesAsync();
+        }
+
     }
 }
