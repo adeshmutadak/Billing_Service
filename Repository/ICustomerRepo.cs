@@ -9,6 +9,12 @@ namespace Repository
 {
     public interface ICustomerRepo
     {
+        Task<List<Customer>> GetAllCustomersAsync(int userId);
+
         Task<List<Customer>> GetAllCustomersAsync();
+        Task<Customer> AddCustomerAsync(Customer customer);
+        Task<Customer?> GetCustomerByIdAsync(int id);
+        Task UpdateCustomerAsync(Customer customer);
+
     }
 }
