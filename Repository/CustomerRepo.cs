@@ -71,5 +71,26 @@ namespace Repository
             return (customer.CowRate, customer.BuffaloRate);
         }
 
+
+
+        public async Task<List<Customer>> SearchCustomersAsync(string name, string phoneNumber, string address)
+        {
+            var query = _context.Customers
+                .Where(c => c.IsDeleted == false || c.IsDeleted == null)
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(name))
+                query = query.Where(c => c.Name.ToLower().Contains(name.ToLower()));
+
+            if (!string.IsNullOrEmpty(phoneNumber))
+                query = query.Where(c => c.PhoneNumber.Contains(phoneNumber));
+
+            if (!string.IsNullOrEmpty(address))
+                query = query.Where(c => c.Address.ToLower().Contains(address.ToLower()));
+
+            return await query.ToListAsync();
+        }
+
+
     }
 }

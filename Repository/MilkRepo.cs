@@ -34,5 +34,19 @@ namespace Repository
             await _context.SaveChangesAsync();
             return entry;
         }
+
+        public async Task<List<Milkentry>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId)
+        {
+            return await _context.Milkentries
+                .Where(x => x.CustomerId == customerId
+                         && x.UserId == userId
+                         && (x.IsDeleted == false || x.IsDeleted == null))
+                .AsNoTracking()
+                .OrderByDescending(x => x.Date)
+                .ToListAsync();
+        }
+
+
+
     }
 }

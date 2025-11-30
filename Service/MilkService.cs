@@ -100,5 +100,60 @@ namespace Service
             };
         }
 
+
+
+
+        public async Task<GeneralResponse<List<MilkEntryResponseDto>>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId)
+        {
+            var customer = await _customerRepo.GetCustomerByIdAsync(customerId);
+            if (customer == null)
+            {
+                return new GeneralResponse<List<MilkEntryResponseDto>>
+                {
+                    Success = false,
+                    Message = "Customer not found",
+                    HttpStatusCode = HttpStatusCode.NotFound
+                };
+            }
+
+            var entries = await _milkRepo.GetMilkEntriesByCustomerAndUserAsync(customerId, userId);
+
+            if (entries == null || entries.Count == 0)
+            {
+                return new GeneralResponse<List<MilkEntryResponseDto>>
+                {
+                    Success = false,
+                    Message = "No milk entries found",
+                    HttpStatusCode = HttpStatusCode.NotFound
+                };
+            }
+
+            // Convert to DTO
+            var mappedEntries = entries.Select(x => new MilkEntryResponseDto
+            {
+                EntryId = x.EntryId,
+                CustomerId = x.CustomerId,
+                UserId = x.UserId,
+                Date = x.Date,
+                CowLitre = x.CowLitre,
+                BuffaloLitre = x.BuffaloLitre,
+                CowRate = x.CowRate,
+                BuffaloRate = x.BuffaloRate,
+                TotalAmount = x.TotalAmount
+            }).ToList();
+
+            return new GeneralResponse<List<MilkEntryResponseDto>>
+            {
+                Success = true,
+                Message = "Milk entries retrieved successfully",
+                HttpStatusCode = HttpStatusCode.OK,
+                Data = mappedEntries
+            };
+        }
+
+        //Task<GeneralResponse<List<Milkentry>>> IMilkService.GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId)
+        //{
+        //    throw new NotImplementedException();
+        //}
     }
 }

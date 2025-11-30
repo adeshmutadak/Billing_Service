@@ -78,6 +78,13 @@ namespace MilkBilling.Controllers
             return await _customerService.DeleteCustomerAsync(id);
         }
 
+        [Authorize]
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchCustomers(string? name = null, string? phoneNumber = null,string? address = null)
+        {
+            var response = await _customerService.SearchCustomersAsync(name, phoneNumber, address);
+            return StatusCode((int)response.HttpStatusCode, response);
+        }
 
     }
 }
