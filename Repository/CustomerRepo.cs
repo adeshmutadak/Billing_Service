@@ -55,5 +55,21 @@ namespace Repository
             await _context.SaveChangesAsync();
         }
 
+
+
+        //Used in the Milk entreis
+        public async Task<(decimal? CowRate, decimal? BuffaloRate)> GetCustomerRatesAsync(int customerId)
+        {
+            var customer = await _context.Customers
+                .Where(c => c.CustomerId == customerId && (c.IsDeleted == false || c.IsDeleted == null))
+                .Select(c => new { c.CowRate, c.BuffaloRate })
+                .FirstOrDefaultAsync();
+
+            if (customer == null)
+                return (null, null);
+
+            return (customer.CowRate, customer.BuffaloRate);
+        }
+
     }
 }
