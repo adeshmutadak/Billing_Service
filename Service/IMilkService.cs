@@ -1,5 +1,6 @@
 ﻿using CommonLayer.CommonResponse;
 using Dto.Request;
+using MilkBilling.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,6 +13,8 @@ namespace Service
     {
 
         Task<GeneralResponse<AddMilkEntryDto>> AddMilkEntryAsync(AddMilkEntryDto dto);
+        Task<GeneralResponse<List<MilkEntryResponseDto>>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId);
+
 
     }
 }

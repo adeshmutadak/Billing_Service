@@ -1,4 +1,6 @@
-﻿using MilkBilling.Models;
+﻿using CommonLayer.CommonResponse;
+using Dto.Request;
+using MilkBilling.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +13,11 @@ namespace Repository
     {
         Task<decimal> GetTotalAmountTillDate(int customerId, DateOnly date);
         Task<Milkentry> AddMilkEntryAsync(Milkentry entry);
+
+        Task<List<Milkentry>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId);
+
+
+
 
     }
 }

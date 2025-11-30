@@ -26,5 +26,15 @@ namespace MilkBilling.Controllers
             return await _milkService.AddMilkEntryAsync(dto);
         }
 
+
+
+        [HttpGet("getmilkOnId")]
+        public async Task<IActionResult> GetMilkEntriesByCustomer(int customerId, int userId)
+        {
+            var response = await _milkService.GetMilkEntriesByCustomerAndUserAsync(customerId, userId);
+            return StatusCode((int)response.HttpStatusCode, response);
+        }
+
+
     }
 }

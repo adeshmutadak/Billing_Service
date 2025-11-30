@@ -1,5 +1,6 @@
 ﻿using CommonLayer.CommonResponse;
 using Dto.Request;
+using MilkBilling.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,6 +19,7 @@ namespace Service
         Task<GeneralResponse<CustomerListDto>> GetCustomerByIdAsync(int id);
         Task<GeneralResponse<string>> DeleteCustomerAsync(int id);
 
+        Task<GeneralResponse<List<Customer>>> SearchCustomersAsync(string name, string phoneNumber, string address);
 
     }
 }

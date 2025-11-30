@@ -17,6 +17,7 @@ namespace Repository
         Task UpdateCustomerAsync(Customer customer);
         Task<(decimal? CowRate, decimal? BuffaloRate)> GetCustomerRatesAsync(int customerId);
 
+        Task<List<Customer>> SearchCustomersAsync(string name, string phoneNumber, string address);
 
     }
 }

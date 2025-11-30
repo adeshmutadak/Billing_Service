@@ -244,5 +244,29 @@ namespace Service
             };
         }
 
+
+        public async Task<GeneralResponse<List<Customer>>> SearchCustomersAsync(string name, string phoneNumber, string address)
+        {
+            var customers = await _customerRepo.SearchCustomersAsync(name, phoneNumber, address);
+
+            if (customers == null || customers.Count == 0)
+            {
+                return new GeneralResponse<List<Customer>>
+                {
+                    Success = false,
+                    Message = "No customers found",
+                    HttpStatusCode = HttpStatusCode.NotFound
+                };
+            }
+
+            return new GeneralResponse<List<Customer>>
+            {
+                Success = true,
+                Message = "Customers fetched successfully",
+                HttpStatusCode = HttpStatusCode.OK,
+                Data = customers
+            };
+        }
+
     }
 }
