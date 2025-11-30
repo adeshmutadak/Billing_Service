@@ -27,7 +27,7 @@ namespace MilkBilling.Controllers
         }
 
 
-
+        [Authorize]
         [HttpGet("getmilkOnId")]
         public async Task<IActionResult> GetMilkEntriesByCustomer(int customerId, int userId)
         {
