@@ -24,6 +24,8 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFileService, FileService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ICustomerRepo, CustomerRepo>();
+builder.Services.AddScoped<IMilkService, MilkService>();
+builder.Services.AddScoped<IMilkRepo, MilkRepo>();
 
 
 
