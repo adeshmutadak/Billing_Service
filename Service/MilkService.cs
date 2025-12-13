@@ -56,9 +56,9 @@ namespace Service
 
             // 4️⃣ If you want previous days total included:
             //    (You said 01/01 = 60 , 02/01 = previous+today)
-            var previousTotal = await _milkRepo.GetTotalAmountTillDate(dto.CustomerId, dto.Date);
+            //var previousTotal = await _milkRepo.GetTotalAmountTillDate(dto.CustomerId, dto.Date);
 
-            decimal finalTotal = previousTotal + todayTotal;
+            //decimal finalTotal = previousTotal + todayTotal;
 
             // 5️⃣ Create new Milk Entry
             var entry = new Milkentry
@@ -70,7 +70,7 @@ namespace Service
                 BuffaloLitre = dto.BuffaloLitre,
                 CowRate = finalCowRate,
                 BuffaloRate = finalBuffaloRate,
-                TotalAmount = finalTotal,
+                TotalAmount = todayTotal,
                 IsDeleted = false,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
