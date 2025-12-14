@@ -37,14 +37,21 @@ namespace Repository
 
         public async Task<List<Milkentry>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId)
         {
+            var today = DateOnly.FromDateTime(DateTime.Now);
+            var startOfMonth = new DateOnly(today.Year, today.Month, 1);
+            var startOfNextMonth = startOfMonth.AddMonths(1);
+
             return await _context.Milkentries
                 .Where(x => x.CustomerId == customerId
                          && x.UserId == userId
-                         && (x.IsDeleted == false || x.IsDeleted == null))
+                         && (x.IsDeleted == false || x.IsDeleted == null)
+                         && x.Date >= startOfMonth
+                         && x.Date < startOfNextMonth)
                 .AsNoTracking()
                 .OrderByDescending(x => x.Date)
                 .ToListAsync();
         }
+
 
 
 
