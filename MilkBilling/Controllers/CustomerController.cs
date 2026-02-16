@@ -22,11 +22,11 @@ namespace MilkBilling.Controllers
 
         /// <summary>
         /// Get All Customer
-        /// </summary>
+        /// </summary> 
         /// <returns></returns>
         [Authorize]
         [HttpGet]
-        public async Task<GeneralResponse<List<CustomerListDto>>> GetCustomers()
+        public async Task<GeneralResponse<List<CustomerListDto>>> GetCustomers( )
         {
             int userId = int.Parse(User.FindFirst("UserId")!.Value);
             return await _customerService.GetAllCustomersAsync(userId);

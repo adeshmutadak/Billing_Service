@@ -26,6 +26,8 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<ICustomerRepo, CustomerRepo>();
 builder.Services.AddScoped<IMilkService, MilkService>();
 builder.Services.AddScoped<IMilkRepo, MilkRepo>();
+builder.Services.AddScoped<IPaymentService , PaymentService>();
+builder.Services.AddScoped<IPaymentRepo , PaymentRepo>();
 
 
 

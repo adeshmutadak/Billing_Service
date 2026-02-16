@@ -24,7 +24,7 @@ namespace Service
             _fileService= fileService;
         }
 
-        public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId)
+        public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId  )
         {
             var customers = await _customerRepo.GetAllCustomersAsync(userId);
 
