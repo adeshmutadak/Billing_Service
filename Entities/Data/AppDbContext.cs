@@ -152,12 +152,14 @@ public partial class AppDbContext : DbContext
             entity.HasIndex(e => e.UserId, "UserId");
 
             entity.Property(e => e.Amount).HasPrecision(10, 2);
+            entity.Property(e => e.Remaning).HasPrecision(10, 2);
+
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.IsDeleted).HasDefaultValueSql("'0'");
-            entity.Property(e => e.PaymentType).HasColumnType("enum('Credit','Debit')");
-            entity.Property(e => e.Reference).HasMaxLength(255);
+            entity.Property(e => e.PaymentType);
+            entity.Property(e => e.IsPaymentDone).HasDefaultValueSql("'0'");
             entity.Property(e => e.UpdatedAt)
                 .ValueGeneratedOnAddOrUpdate()
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")

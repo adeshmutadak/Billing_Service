@@ -11,12 +11,12 @@ public partial class Payment
 
     public int UserId { get; set; }
 
-    public string PaymentType { get; set; } = null!;
+    public string? PaymentType { get; set; } = null!;
 
+    public bool? IsPaymentDone { get; set; }
+    public DateOnly? Date { get; set; }
     public decimal Amount { get; set; }
-
-    public string? Reference { get; set; }
-
+    public decimal Remaning { get; set; }
     public bool? IsDeleted { get; set; }
 
     public DateTime? CreatedAt { get; set; }

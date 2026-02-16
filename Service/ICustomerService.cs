@@ -11,7 +11,7 @@ namespace Service
 {
     public interface ICustomerService
     {
-        Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId);
+        Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId );
 
         Task<GeneralResponse<CustomerListDto>> AddCustomerAsync(AddCustomerRequestDto dto);
 
