@@ -155,5 +155,72 @@ namespace Service
         //{
         //    throw new NotImplementedException();
         //}
+
+        public async Task<GeneralResponse<string>> UpdateMilkEntryAsync(
+  
+    AddMilkEntryDto model)
+        {
+            var entry = await _milkRepo.GetMilkEntryByIdAsync(model.CustomerId, model.UserId, model.EntryId);
+
+            if (entry == null)
+            {
+                return new GeneralResponse<string>
+                {
+                    Success = false,
+                    Message = "Milk entry not found",
+                    HttpStatusCode = HttpStatusCode.NotFound
+                };
+            }
+
+            // Update fields
+            entry.Date = model.Date;
+            entry.CowLitre = model.CowLitre;
+            entry.BuffaloLitre = model.BuffaloLitre;
+            entry.CowRate = model.CowRate;
+            entry.BuffaloRate = model.BuffaloRate;
+
+            // Recalculate total
+            entry.TotalAmount =
+                ((model.CowLitre ?? 0) * (model.CowRate ?? 0)) +
+                ((model.BuffaloLitre ?? 0) * (model.BuffaloRate ?? 0));
+
+            await _milkRepo.UpdateMilkEntryAsync(entry);
+
+            return new GeneralResponse<string>
+            {
+                Success = true,
+                Message = "Milk entry updated successfully",
+                HttpStatusCode = HttpStatusCode.OK
+            };
+        }
+
+
+        public async Task<GeneralResponse<string>> DeleteMilkEntryAsync(int entryId)
+        {
+            var entry = await _milkRepo.GetMilkEntryByEntryIdAsync(entryId);
+
+            if (entry == null)
+            {
+                return new GeneralResponse<string>
+                {
+                    Success = false,
+                    Message = "Milk entry not found",
+                    HttpStatusCode = HttpStatusCode.NotFound
+                };
+            }
+
+            // Soft delete
+            entry.IsDeleted = true;
+
+            await _milkRepo.DeleteMilkEntryAsync(entry);
+
+            return new GeneralResponse<string>
+            {
+                Success = true,
+                Message = "Milk entry deleted successfully",
+                HttpStatusCode = HttpStatusCode.OK
+            };
+        }
+
     }
 }

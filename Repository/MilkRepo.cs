@@ -53,7 +53,36 @@ namespace Repository
         }
 
 
+        public async Task<Milkentry?> GetMilkEntryByIdAsync(
+    int customerId,
+    int userId,
+    int entryId)
+        {
+            return await _context.Milkentries
+                .FirstOrDefaultAsync(x =>
+                    x.EntryId == entryId &&
+                    x.CustomerId == customerId &&
+                    x.UserId == userId &&
+                    (x.IsDeleted == false || x.IsDeleted == null));
+        }
+        public async Task UpdateMilkEntryAsync(Milkentry entry)
+        {
+            _context.Milkentries.Update(entry);
+            await _context.SaveChangesAsync();
+        }
 
+        public async Task<Milkentry?> GetMilkEntryByEntryIdAsync(int entryId)
+        {
+            return await _context.Milkentries
+                .FirstOrDefaultAsync(x =>
+                    x.EntryId == entryId &&
+                    (x.IsDeleted == false || x.IsDeleted == null));
+        }
+        public async Task DeleteMilkEntryAsync(Milkentry entry)
+        {
+            _context.Milkentries.Update(entry);
+            await _context.SaveChangesAsync();
+        }
 
     }
 }

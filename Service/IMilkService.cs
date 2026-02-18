@@ -14,6 +14,10 @@ namespace Service
 
         Task<GeneralResponse<AddMilkEntryDto>> AddMilkEntryAsync(AddMilkEntryDto dto);
         Task<GeneralResponse<List<MilkEntryResponseDto>>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId);
+        Task<GeneralResponse<string>> UpdateMilkEntryAsync(
+    AddMilkEntryDto model);
+
+        Task<GeneralResponse<string>> DeleteMilkEntryAsync(int entryId);
 
 
     }

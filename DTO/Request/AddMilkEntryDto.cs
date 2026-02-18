@@ -8,7 +8,7 @@ namespace Dto.Request
 {
     public class AddMilkEntryDto
     {
-        public int? EntryId { get; set; }
+        public int EntryId { get; set; }
         public int CustomerId { get; set; }
         public int UserId { get; set; }
 

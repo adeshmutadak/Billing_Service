@@ -16,7 +16,11 @@ namespace Repository
 
         Task<List<Milkentry>> GetMilkEntriesByCustomerAndUserAsync(int customerId, int userId);
 
+        Task<Milkentry?> GetMilkEntryByIdAsync(int customerId, int userId, int entryId);
+        Task UpdateMilkEntryAsync(Milkentry entry);
 
+        Task<Milkentry?> GetMilkEntryByEntryIdAsync(int entryId);
+        Task DeleteMilkEntryAsync(Milkentry entry);
 
 
     }

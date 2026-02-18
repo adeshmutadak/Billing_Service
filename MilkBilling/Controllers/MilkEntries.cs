@@ -35,6 +35,24 @@ namespace MilkBilling.Controllers
             return StatusCode((int)response.HttpStatusCode, response);
         }
 
+        [Authorize]
+        [HttpPut("updateMilkEntry")]
+        public async Task<IActionResult> UpdateMilkEntry( 
+     [FromBody] AddMilkEntryDto model)
+        {
+            var response = await _milkService.UpdateMilkEntryAsync( model);
+            return StatusCode((int)response.HttpStatusCode, response);
+        }
+
+
+        [Authorize]
+        [HttpDelete("deleteMilkEntry/{entryId}")]
+        public async Task<IActionResult> DeleteMilkEntry(int entryId)
+        {
+            var response = await _milkService.DeleteMilkEntryAsync(entryId);
+            return StatusCode((int)response.HttpStatusCode, response);
+        }
+
 
     }
 }
