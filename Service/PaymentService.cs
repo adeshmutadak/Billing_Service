@@ -35,8 +35,8 @@ namespace Service
             }
             var payment = new Payment
             {
-                UserId = addBillDto.CustomerId,
-                CustomerId = addBillDto.UserId,
+                UserId = customer.UserId,
+                CustomerId = customer.CustomerId,
                 PaymentType = addBillDto.PaymentType,
                 Amount = addBillDto.Amount,
                 Remaning = addBillDto.Remaning,
