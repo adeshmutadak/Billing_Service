@@ -1,6 +1,7 @@
 ﻿using CommonLayer.CommonResponse;
 using CommonLayer.PhotoUpload;
 using Dto.Request;
+using Dto.Response;
 using MilkBilling.Models;
 using Repository;
 using System;
@@ -17,40 +18,114 @@ namespace Service
 
         private readonly ICustomerRepo _customerRepo;
         private readonly IFileService _fileService;
+        private readonly IPaymentRepo _paymentRepo;
 
-       public CustomerService (ICustomerRepo customerRepo, IFileService fileService)
+       public CustomerService (ICustomerRepo customerRepo, IFileService fileService ,IPaymentRepo paymentRepo)
         {
             _customerRepo= customerRepo;
             _fileService= fileService;
+            _paymentRepo= paymentRepo;
         }
 
-        public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId  )
+        //public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId  )
+        //{
+        //    var customers = await _customerRepo.GetAllCustomersAsync(userId);
+
+        //    var result = customers.Select(c => new CustomerListDto
+        //    {
+        //        CustomerId = c.CustomerId,
+        //        Name = c.Name,
+        //        Address = c.Address,
+        //        PhotoUrl = c.PhotoUrl,
+        //        WhatsappNumber = c.WhatsappNumber,
+        //        PhoneNumber = c.PhoneNumber,
+        //        Email = c.Email,
+        //        CowRate = c.CowRate,
+        //        BuffaloRate = c.BuffaloRate
+        //    }).ToList();
+
+        //    return new GeneralResponse<List<CustomerListDto>>
+        //    {
+        //        Success = true,
+        //        HttpStatusCode = HttpStatusCode.OK,
+        //        Message = "Customer list retrieved successfully",
+        //        Data = result
+        //    };
+        //}
+
+
+
+
+
+        public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId)
         {
             var customers = await _customerRepo.GetAllCustomersAsync(userId);
 
-            var result = customers.Select(c => new CustomerListDto
+            var result = new List<CustomerListDto>();
+
+            foreach (var c in customers)
             {
-                CustomerId = c.CustomerId,
-                Name = c.Name,
-                Address = c.Address,
-                PhotoUrl = c.PhotoUrl,
-                WhatsappNumber = c.WhatsappNumber,
-                PhoneNumber = c.PhoneNumber,
-                Email = c.Email,
-                CowRate = c.CowRate,
-                BuffaloRate = c.BuffaloRate
-            }).ToList();
+                // Fetch payments for this customer from the DB
+                // Step 2: Fetch all payments for this customer
+                var paymentsFromDb = await _paymentRepo.GetPaymentsByCustomerIdAsync(userId, c.CustomerId);
+
+                var paymentDtos = new List<PaymentResponseDto>();
+
+                var currentYear = DateTime.Now.Year;
+                for (int month = 1; month <= 12; month++)
+                {
+                    var payment = paymentsFromDb.FirstOrDefault(p => p.Date.HasValue && p.Date.Value.Month == month);
+
+                    if (payment != null)
+                    {
+                        // Map only required fields
+                        paymentDtos.Add(new PaymentResponseDto
+                        {
+                           // PaymentId = payment.PaymentId,       // DB field
+                            Amount = payment.Amount,
+                            Remaning = payment.Remaning,
+                            PaymentType = payment.PaymentType,
+                            IsPaymentDone = payment.IsPaymentDone,
+                            Date = payment.Date
+                        });
+                    }
+                    else
+                    {
+                        // Dummy payment
+                        paymentDtos.Add(new PaymentResponseDto
+                        {
+                            //PaymentId = 0,                       // dummy
+                            Amount = 0,
+                            Remaning = 0,
+                            PaymentType = null,
+                            IsPaymentDone = false,
+                            Date = new DateOnly(currentYear, month, 1) // Convert to DateOnly
+                        });
+                    }
+                }
+                // Add customer with payments
+                result.Add(new CustomerListDto
+                {
+                    CustomerId = c.CustomerId,
+                    Name = c.Name,
+                    Address = c.Address,
+                    PhotoUrl = c.PhotoUrl,
+                    WhatsappNumber = c.WhatsappNumber,
+                    PhoneNumber = c.PhoneNumber,
+                    Email = c.Email,
+                    CowRate = c.CowRate,
+                    BuffaloRate = c.BuffaloRate,
+                    paymentResponseDtos = paymentDtos
+                });
+            }
 
             return new GeneralResponse<List<CustomerListDto>>
             {
+                Data = result,
                 Success = true,
-                HttpStatusCode = HttpStatusCode.OK,
-                Message = "Customer list retrieved successfully",
-                Data = result
+                Message = "Customers fetched successfully"
             };
         }
-
-
         public async Task<GeneralResponse<CustomerListDto>> AddCustomerAsync(AddCustomerRequestDto dto)
         {
 

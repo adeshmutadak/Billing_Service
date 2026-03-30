@@ -55,5 +55,17 @@ namespace Repository
             return await query.ToListAsync();
         }
 
+
+
+        public async Task<List<Payment>> GetPaymentsByCustomerIdAsync(int userId, int customerId)
+        {
+            // Fetch all payments for this customer
+            var payments = await _context.Payments
+                .Where(p => p.UserId == userId && p.CustomerId == customerId)
+                .ToListAsync();
+
+            return payments;
+        }
+
     }
 }

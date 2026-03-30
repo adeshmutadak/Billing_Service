@@ -18,5 +18,10 @@ namespace Repository
     bool? isPaymentDone
 );
 
+        Task<List<Payment>> GetPaymentsByCustomerIdAsync(
+   int userId,
+   int customerId
+);
+
     }
 }
