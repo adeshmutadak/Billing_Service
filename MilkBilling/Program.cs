@@ -30,6 +30,8 @@ builder.Services.AddScoped<IPaymentService , PaymentService>();
 builder.Services.AddScoped<IPaymentRepo , PaymentRepo>();
 
 
+builder.Services.AddScoped<IHistoryService, HistoryService>();
+builder.Services.AddScoped<IHistoryRepo, HistoryRepo>();
 
 
 
