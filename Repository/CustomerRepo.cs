@@ -26,10 +26,15 @@ namespace Repository
         }
         public async Task<List<Customer>> GetAllCustomersAsync(int userId)
         {
+            var startOfYear = new DateTime(DateTime.Now.Year, 1, 1);
+            var startOfNextYear = startOfYear.AddYears(1);
+
             return await _context.Customers
                 .Where(c =>
                     (c.IsDeleted == false || c.IsDeleted == null) &&
-                     c.UserId == userId
+                    c.UserId == userId &&
+                    c.CreatedAt >= startOfYear &&
+                    c.CreatedAt < startOfNextYear
                 )
                 .ToListAsync();
         }
