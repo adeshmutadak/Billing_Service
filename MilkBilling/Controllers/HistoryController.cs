@@ -22,9 +22,14 @@ namespace MilkBilling.Controllers
 
         /// <summary>
         /// History with filters. Examples:
-        ///   ?year=2025&amp;includeDetail=true                     whole year, filter locally
+        ///   ?year=2025&amp;includeDetail=true
+        ///       customers created in 2025, all twelve months with day detail
+        ///   ?year=2025&amp;includeAllCustomers=true&amp;includeDetail=true
+        ///       every customer regardless of when they were created
         ///   ?year=2025&amp;customerId=1&amp;month=12&amp;includeEmptyDays=true
-        ///   ?year=2025&amp;isPaid=false                            unpaid and partial months
+        ///       one customer, one month, every day of the month
+        ///   ?year=2025&amp;isPaymentDone=false
+        ///       months with no settled payment
         /// </summary>
         [Authorize]
         [HttpGet]
@@ -34,7 +39,8 @@ namespace MilkBilling.Controllers
             return StatusCode((int)response.HttpStatusCode, response);
         }
 
-        /// <summary>Years and customers available, for the filter dropdowns.</summary>
+        /// <summary>Years and customers available, for the filter dropdowns.
+        /// Years cover milk entries, bills, payments and customer creation.</summary>
         [Authorize]
         [HttpGet("filters")]
         public async Task<IActionResult> GetFilterOptions()

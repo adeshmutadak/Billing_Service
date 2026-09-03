@@ -40,20 +40,40 @@ namespace Service
                 return Fail("Month must be between 1 and 12", HttpStatusCode.BadRequest);
             }
 
-            var customers = await _historyRepo.GetCustomersAsync(userId, filter.CustomerId);
+            // Customers are scoped by the year they were created unless the caller
+            // opts out. See HistoryFilterDto.IncludeAllCustomers for the trade-off.
+            var createdInYear = filter.IncludeAllCustomers ? (int?)null : filter.Year;
+
+            var customers = await _historyRepo.GetCustomersAsync(
+                userId, filter.CustomerId, createdInYear);
+
             if (customers.Count == 0)
             {
-                return Fail("No customers found", HttpStatusCode.NotFound);
+                return new GeneralResponse<HistoryResponseDto>
+                {
+                    Success = true,
+                    Message = filter.IncludeAllCustomers
+                        ? "No customers found"
+                        : $"No customers created in {filter.Year}",
+                    HttpStatusCode = HttpStatusCode.OK,
+                    Data = new HistoryResponseDto
+                    {
+                        Totals = new HistoryTotalsDto(),
+                        Customers = new List<HistoryCustomerDto>()
+                    }
+                };
             }
 
             var customerIds = customers.Select(c => c.CustomerId).ToList();
 
-            // The whole year is always read, so the totals stay correct even when
-            // only one month is being displayed.
+            // The whole year is always read, so totals stay correct even when only
+            // one month is displayed.
             var entries = await _historyRepo.GetEntriesForYearAsync(customerIds, filter.Year);
+            var bills = await _historyRepo.GetBillsForYearAsync(customerIds, filter.Year);
             var payments = await _historyRepo.GetPaymentsForYearAsync(customerIds, filter.Year);
 
             var entriesByCustomer = entries.ToLookup(e => e.CustomerId);
+            var billsByCustomer = bills.ToLookup(b => b.CustomerId);
             var paymentsByCustomer = payments.ToLookup(p => p.CustomerId);
 
             var includeDays = filter.IncludeDetail || filter.Month.HasValue;
@@ -68,13 +88,14 @@ namespace Service
             foreach (var customer in customers)
             {
                 var custEntries = entriesByCustomer[customer.CustomerId].ToList();
+                var custBills = billsByCustomer[customer.CustomerId].ToList();
                 var custPayments = paymentsByCustomer[customer.CustomerId].ToList();
 
                 // All twelve months are built every time, so the UI has a fixed
                 // grid and an empty month is explicit rather than missing.
                 var months = Enumerable.Range(1, 12)
                     .Select(m => BuildMonth(
-                        filter.Year, m, custEntries, custPayments,
+                        filter.Year, m, custEntries, custBills, custPayments,
                         includeDays, filter.IncludeEmptyDays))
                     .ToList();
 
@@ -88,16 +109,16 @@ namespace Service
                     else unpaidCustomers++;
                 }
 
-                // Filters trim the month list. The customer is still returned, so
-                // the response shape is predictable; hide an empty Months array
-                // in the UI if you do not want the row.
+                // Filters trim the month list. The customer is still returned so
+                // the response shape stays predictable; hide an empty Months array
+                // in the UI if the row is not wanted.
                 IEnumerable<HistoryMonthDto> visible = months;
 
                 if (filter.Month.HasValue)
                     visible = visible.Where(m => m.Month == filter.Month.Value);
 
-                if (filter.IsPaid.HasValue)
-                    visible = visible.Where(m => m.IsPaid == filter.IsPaid.Value);
+                if (filter.IsPaymentDone.HasValue)
+                    visible = visible.Where(m => m.IsPaymentDone == filter.IsPaymentDone.Value);
 
                 customerDtos.Add(new HistoryCustomerDto
                 {
@@ -108,13 +129,15 @@ namespace Service
                     Address = customer.Address,
                     CowRate = customer.CowRate,
                     BuffaloRate = customer.BuffaloRate,
+                    CreatedAt = customer.CreatedAt,
                     Months = visible.ToList()
                 });
             }
 
             var totalAmount = yearMonths.Sum(m => m.TotalAmount);
+            var payableAmount = yearMonths.Sum(m => m.PayableAmount);
             var paidAmount = yearMonths.Sum(m => m.PaidAmount);
-            var remaining = totalAmount - paidAmount;
+            var remaining = payableAmount - paidAmount;
 
             return new GeneralResponse<HistoryResponseDto>
             {
@@ -131,6 +154,7 @@ namespace Service
                         PaidCustomerCount = paidCustomers,
                         UnpaidCustomerCount = unpaidCustomers,
                         TotalAmount = totalAmount,
+                        PayableAmount = payableAmount,
                         PaidAmount = paidAmount,
                         RemainingAmount = remaining > 0 ? remaining : 0
                     },
@@ -141,9 +165,16 @@ namespace Service
 
         public async Task<GeneralResponse<HistoryFilterOptionsDto>> GetFilterOptionsAsync(int userId)
         {
-            var customers = await _historyRepo.GetCustomersAsync(userId, null);
+            // Every customer, so the dropdown is not itself narrowed by a year.
+            var customers = await _historyRepo.GetCustomersAsync(userId, null, null);
             var years = await _historyRepo.GetAvailableYearsAsync(
                 customers.Select(c => c.CustomerId).ToList());
+
+            // The customer creation years matter too, because the history query
+            // scopes customers on CreatedAt by default.
+            var createdYears = customers
+                .Where(c => c.CreatedAt != null)
+                .Select(c => c.CreatedAt.Value.Year);
 
             return new GeneralResponse<HistoryFilterOptionsDto>
             {
@@ -152,12 +183,16 @@ namespace Service
                 HttpStatusCode = HttpStatusCode.OK,
                 Data = new HistoryFilterOptionsDto
                 {
-                    Years = years,
+                    Years = years.Concat(createdYears)
+                                .Distinct()
+                                .OrderByDescending(y => y)
+                                .ToList(),
                     Customers = customers.Select(c => new HistoryCustomerOptionDto
                     {
                         CustomerId = c.CustomerId,
                         Name = c.Name,
-                        PhoneNumber = c.PhoneNumber
+                        PhoneNumber = c.PhoneNumber,
+                        CreatedAt = c.CreatedAt
                     }).ToList()
                 }
             };
@@ -167,6 +202,7 @@ namespace Service
             int year,
             int month,
             List<Milkentry> entries,
+            List<Bill> bills,
             List<Payment> payments,
             bool includeDays,
             bool includeEmptyDays)
@@ -176,19 +212,29 @@ namespace Service
                 .OrderBy(e => e.Date)
                 .ToList();
 
+            // payments.Date carries the month a payment settles, so a payment
+            // recorded in September for the August bill lands in August here.
             var monthPayments = payments
                 .Where(p => p.Date.HasValue && p.Date.Value.Year == year && p.Date.Value.Month == month)
                 .OrderBy(p => p.Date)
                 .ToList();
 
+            var bill = bills.FirstOrDefault(b => b.Year == year && b.Month == month);
+
             // TotalAmount is reported as stored, not recalculated from litres and
-            // rates, so the history can never disagree with the printed bill.
+            // rates, so the history cannot disagree with the printed bill.
             var totalAmount = monthEntries.Sum(e => e.TotalAmount ?? 0);
+
+            // What is actually owed. A generated bill wins, because its TotalPayable
+            // already folds in any previous balance carried forward.
+            var payable = bill?.TotalPayable ?? totalAmount;
+
             var paidAmount = monthPayments.Sum(p => p.Amount);
-            var remaining = totalAmount - paidAmount;
+            var remaining = payable - paidAmount;
+            var isPaymentDone = monthPayments.Any(p => p.IsPaymentDone == true);
 
             string status;
-            if (totalAmount <= 0 && paidAmount <= 0) status = StatusNoActivity;
+            if (totalAmount <= 0 && paidAmount <= 0 && bill == null) status = StatusNoActivity;
             else if (paidAmount > 0 && remaining <= 0) status = StatusPaid;
             else if (paidAmount > 0) status = StatusPartial;
             else status = StatusUnpaid;
@@ -200,8 +246,18 @@ namespace Service
                 TotalCowLitre = monthEntries.Sum(e => e.CowLitre ?? 0),
                 TotalBuffaloLitre = monthEntries.Sum(e => e.BuffaloLitre ?? 0),
                 TotalAmount = totalAmount,
+
+                BillGenerated = bill != null,
+                BillId = bill?.BillId,
+                BillTotalAmount = bill?.TotalAmount,
+                BillPreviousBalance = bill?.PreviousBalance,
+                BillTotalPayable = bill?.TotalPayable,
+
+                PayableAmount = payable,
                 PaidAmount = paidAmount,
                 RemainingAmount = remaining > 0 ? remaining : 0,
+
+                IsPaymentDone = isPaymentDone,
                 PaymentStatus = status,
                 IsPaid = status == StatusPaid
             };
@@ -219,6 +275,7 @@ namespace Service
             {
                 PaymentId = p.PaymentId,
                 Date = p.Date,
+                RecordedAt = p.CreatedAt,
                 Amount = p.Amount,
                 Remaining = p.Remaning,
                 PaymentType = p.PaymentType,
@@ -240,11 +297,14 @@ namespace Service
 
             for (var day = 1; day <= daysInMonth; day++)
             {
-                var entry = byDay[day].FirstOrDefault();
+                // A day can hold more than one entry: the existing data has three
+                // rows on 2025-12-02. All of them are emitted, so no delivery is
+                // silently dropped and the month total always matches the rows.
+                var dayEntries = byDay[day].ToList();
 
-                if (entry != null)
+                if (dayEntries.Count > 0)
                 {
-                    days.Add(ToDay(entry));
+                    days.AddRange(dayEntries.Select(ToDay));
                     continue;
                 }
 
