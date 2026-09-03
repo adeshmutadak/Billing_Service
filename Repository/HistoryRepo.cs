@@ -74,20 +74,20 @@ namespace Repository
             if (customerIds == null || customerIds.Count == 0)
                 return new List<int>();
 
-            // Dates are projected first and the year taken in memory, so this does
-            // not depend on DateOnly-to-YEAR() SQL translation. No AsNoTracking
-            // here: it is constrained to reference types, and a projection to a
-            // scalar such as DateOnly is never tracked in the first place.
-            var dates = await _context.Milkentries
+            var dates = await _context.Customers
                 .Where(m => customerIds.Contains(m.CustomerId)
-                         && (m.IsDeleted == false || m.IsDeleted == null))
-                .Select(m => m.Date)
+                         && (m.IsDeleted == false || m.IsDeleted == null)
+                         && m.CreatedAt.HasValue)
+                .Select(m => m.CreatedAt)
                 .ToListAsync();
 
-            return dates.Select(d => d.Year)
+            return dates
+                .Where(d => d.HasValue)
+                .Select(d => d.Value.Year)
                         .Distinct()
                         .OrderByDescending(y => y)
                         .ToList();
         }
+
     }
 }
