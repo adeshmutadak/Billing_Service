@@ -24,6 +24,8 @@ namespace Repository
         Task<Bill> AddBillAsync(Bill bill);
         Task UpdateBillAsync(Bill bill);
 
+        Task<Bill?> GetLatestEarlierBillAsync(int customerId, int year, int month);
+
         Task<List<Customer>> GetCustomersAsync(int userId, int? customerId, int? createdInYear);
 
         /// <summary>Every milk entry for these customers in the year, ascending by

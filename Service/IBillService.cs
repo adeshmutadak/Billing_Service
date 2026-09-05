@@ -18,5 +18,8 @@ namespace Service
 
         Task<GeneralResponse<BillHistoryResponseDto>> GetHistoryAsync(
               int userId, BillHistoryFilterDto filter);
+
+        Task<GeneralResponse<BillPreviewDto>> GetBillPreviewAsync(
+            int userId, int customerId, int year, int month);
     }
 }

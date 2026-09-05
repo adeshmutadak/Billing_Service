@@ -45,6 +45,20 @@ namespace MilkBilling.Controllers
             var response = await _billService.GetHistoryAsync(CurrentUserId, filter);
             return StatusCode((int)response.HttpStatusCode, response);
         }
+
+
+        [Authorize]
+        [HttpGet("preview")]
+        public async Task<IActionResult> GetBillPreview(
+           [FromQuery] int customerId,
+           [FromQuery] int month,
+           [FromQuery] int year)
+        {
+            var response = await _billService.GetBillPreviewAsync(
+                CurrentUserId, customerId, year, month);
+
+            return StatusCode((int)response.HttpStatusCode, response);
+        }
     }
 }
 
