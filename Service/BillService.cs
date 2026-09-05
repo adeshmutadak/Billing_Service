@@ -450,6 +450,8 @@ namespace Service
                 TotalCowLitre = totalCowLitre,
                 TotalBuffaloLitre = totalBuffaloLitre,
                 TotalAmount = totalAmount,
+                PreviousBalance = bill?.PreviousBalance ?? 0m,
+                PayableAmount = payable,
                 PaidAmount = paidAmount,
                 RemainingAmount = remaining,
                 PaymentStatus = status,
