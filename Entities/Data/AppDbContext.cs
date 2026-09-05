@@ -20,8 +20,6 @@ public partial class AppDbContext : DbContext
 
     public virtual DbSet<Milkentry> Milkentries { get; set; }
 
-    public virtual DbSet<Payment> Payments { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
 
 //    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -48,6 +46,8 @@ public partial class AppDbContext : DbContext
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnType("datetime");
             entity.Property(e => e.IsDeleted).HasDefaultValueSql("'0'");
+            entity.Property(e => e.IsPaymentDone).HasDefaultValueSql("'0'");
+            entity.Property(e => e.PaymentType).HasMaxLength(255);
             entity.Property(e => e.PreviousBalance)
                 .HasPrecision(10, 2)
                 .HasDefaultValueSql("'0.00'");
@@ -141,40 +141,6 @@ public partial class AppDbContext : DbContext
                 .HasConstraintName("milkentries_ibfk_2");
         });
 
-        modelBuilder.Entity<Payment>(entity =>
-        {
-            entity.HasKey(e => e.PaymentId).HasName("PRIMARY");
-
-            entity.ToTable("payments");
-
-            entity.HasIndex(e => e.CustomerId, "CustomerId");
-
-            entity.HasIndex(e => e.UserId, "UserId");
-
-            entity.Property(e => e.Amount).HasPrecision(10, 2);
-            entity.Property(e => e.Remaning).HasPrecision(10, 2);
-
-            entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("datetime");
-            entity.Property(e => e.IsDeleted).HasDefaultValueSql("'0'");
-            entity.Property(e => e.PaymentType);
-            entity.Property(e => e.IsPaymentDone).HasDefaultValueSql("'0'");
-            entity.Property(e => e.UpdatedAt)
-                .ValueGeneratedOnAddOrUpdate()
-                .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("datetime");
-
-            entity.HasOne(d => d.Customer).WithMany(p => p.Payments)
-                .HasForeignKey(d => d.CustomerId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("payments_ibfk_1");
-
-            entity.HasOne(d => d.User).WithMany(p => p.Payments)
-                .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.ClientSetNull)
-                .HasConstraintName("payments_ibfk_2");
-        });
 
         modelBuilder.Entity<User>(entity =>
         {

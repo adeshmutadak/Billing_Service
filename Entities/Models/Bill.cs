@@ -27,6 +27,13 @@ public partial class Bill
 
     public bool? IsDeleted { get; set; }
 
+    /// <summary>How the month's bill was settled. Mirrors payments.PaymentType.</summary>
+    public string? PaymentType { get; set; }
+
+    /// <summary>Whether this month's bill is settled. Authoritative for the month,
+    /// where payments.IsPaymentDone is per transaction.</summary>
+    public bool IsPaymentDone { get; set; }
+
     public DateTime? CreatedAt { get; set; }
 
     public DateTime? UpdatedAt { get; set; }

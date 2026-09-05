@@ -34,8 +34,5 @@ public partial class Customer
     public virtual ICollection<Bill> Bills { get; set; } = new List<Bill>();
 
     public virtual ICollection<Milkentry> Milkentries { get; set; } = new List<Milkentry>();
-
-    public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
-
     public virtual User User { get; set; } = null!;
 }

@@ -1,7 +1,6 @@
 ﻿using CommonLayer.CommonResponse;
 using CommonLayer.PhotoUpload;
 using Dto.Request;
-using Dto.Response;
 using MilkBilling.Models;
 using Repository;
 using System;
@@ -18,13 +17,11 @@ namespace Service
 
         private readonly ICustomerRepo _customerRepo;
         private readonly IFileService _fileService;
-        private readonly IPaymentRepo _paymentRepo;
 
-       public CustomerService (ICustomerRepo customerRepo, IFileService fileService ,IPaymentRepo paymentRepo)
+       public CustomerService (ICustomerRepo customerRepo, IFileService fileService )
         {
             _customerRepo= customerRepo;
             _fileService= fileService;
-            _paymentRepo= paymentRepo;
         }
 
         //public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId  )
@@ -67,42 +64,10 @@ namespace Service
             {
                 // Fetch payments for this customer from the DB
                 // Step 2: Fetch all payments for this customer
-                var paymentsFromDb = await _paymentRepo.GetPaymentsByCustomerIdAsync(userId, c.CustomerId);
-
-                var paymentDtos = new List<PaymentResponseDto>();
+                
 
                 var currentYear = DateTime.Now.Year;
-                for (int month = 1; month <= 12; month++)
-                {
-                    var payment = paymentsFromDb.FirstOrDefault(p => p.Date.HasValue && p.Date.Value.Month == month);
-
-                    if (payment != null)
-                    {
-                        // Map only required fields
-                        paymentDtos.Add(new PaymentResponseDto
-                        {
-                           // PaymentId = payment.PaymentId,       // DB field
-                            Amount = payment.Amount,
-                            Remaning = payment.Remaning,
-                            PaymentType = payment.PaymentType,
-                            IsPaymentDone = payment.IsPaymentDone,
-                            Date = payment.Date
-                        });
-                    }
-                    else
-                    {
-                        // Dummy payment
-                        paymentDtos.Add(new PaymentResponseDto
-                        {
-                            //PaymentId = 0,                       // dummy
-                            Amount = 0,
-                            Remaning = 0,
-                            PaymentType = null,
-                            IsPaymentDone = false,
-                            Date = new DateOnly(currentYear, month, 1) // Convert to DateOnly
-                        });
-                    }
-                }
+                
                 // Add customer with payments
                 result.Add(new CustomerListDto
                 {
@@ -114,8 +79,7 @@ namespace Service
                     PhoneNumber = c.PhoneNumber,
                     Email = c.Email,
                     CowRate = c.CowRate,
-                    BuffaloRate = c.BuffaloRate,
-                    paymentResponseDtos = paymentDtos
+                    BuffaloRate = c.BuffaloRate
                 });
             }
 
