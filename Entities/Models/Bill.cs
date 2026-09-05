@@ -24,6 +24,7 @@ public partial class Bill
     public decimal? PreviousBalance { get; set; }
 
     public decimal? TotalPayable { get; set; }
+    public decimal PaidAmount { get; set; }
 
     public bool? IsDeleted { get; set; }
 

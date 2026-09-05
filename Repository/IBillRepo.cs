@@ -35,5 +35,7 @@ namespace Repository
         /// <summary>Every bill for these customers in the year, matched on the
         /// bills.Year and bills.Month columns.</summary>
         Task<List<Bill>> GetBillsForYearAsync(List<int> customerIds, int year);
+
+        Task<List<Bill>> GetBillsAfterAsync(int customerId, int year, int month);
     }
 }

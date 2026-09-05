@@ -55,6 +55,7 @@ public partial class AppDbContext : DbContext
             entity.Property(e => e.TotalBuffaloLitre).HasPrecision(10, 2);
             entity.Property(e => e.TotalCowLitre).HasPrecision(10, 2);
             entity.Property(e => e.TotalPayable).HasPrecision(10, 2);
+            entity.Property(e => e.PaidAmount).HasPrecision(10, 2).HasDefaultValueSql("'0.00'");
             entity.Property(e => e.UpdatedAt)
                 .ValueGeneratedOnAddOrUpdate()
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
