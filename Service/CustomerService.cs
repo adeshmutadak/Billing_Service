@@ -1,6 +1,7 @@
 ﻿using CommonLayer.CommonResponse;
 using CommonLayer.PhotoUpload;
 using Dto.Request;
+using Microsoft.Extensions.Configuration;
 using MilkBilling.Models;
 using Repository;
 using System;
@@ -17,11 +18,13 @@ namespace Service
 
         private readonly ICustomerRepo _customerRepo;
         private readonly IFileService _fileService;
+        private readonly IConfiguration _config;
 
-       public CustomerService (ICustomerRepo customerRepo, IFileService fileService )
+        public CustomerService (ICustomerRepo customerRepo, IFileService fileService, IConfiguration config)
         {
             _customerRepo= customerRepo;
             _fileService= fileService;
+            _config = config;
         }
 
         //public async Task<GeneralResponse<List<CustomerListDto>>> GetAllCustomersAsync(int userId  )
@@ -99,8 +102,11 @@ namespace Service
             if (!string.IsNullOrEmpty(dto.PhotoUrl))
             {
 
-                string folderPath = "D:\\Projects\\.Vs_Source\\Push_milk\\Billing_Service\\DTO\\Uploads\\Customer\\";  // your upload folder
-                photoUrl = await _fileService.SaveBase64ImageAsync(dto.PhotoUrl, folderPath);
+                // string folderPath = "D:\\Projects\\.Vs_Source\\Push_milk\\Billing_Service\\DTO\\Uploads\\Customer\\";  // your upload folder
+                var root = _config["Uploads:RootPath"] ?? "uploads";
+                var folderPath = Path.Combine(root, "customer");
+                var fileName = await _fileService.SaveBase64ImageAsync(dto.PhotoUrl, folderPath);
+                photoUrl = fileName is null ? null : $"/uploads/customer/{fileName}";
             }
 
 
@@ -163,8 +169,11 @@ namespace Service
             // If Base64 photo is provided, save new photo
             if (!string.IsNullOrEmpty(dto.Base64Photo))
             {
-                string folderPath = "D:\\Projects\\.Vs_Source\\Push_milk\\Billing_Service\\DTO\\Uploads\\Customer\\";
-                customer.PhotoUrl = await _fileService.SaveBase64ImageAsync(dto.Base64Photo, folderPath);
+                //  string folderPath = "D:\\Projects\\.Vs_Source\\Push_milk\\Billing_Service\\DTO\\Uploads\\Customer\\";
+                var root = _config["Uploads:RootPath"] ?? "uploads";
+                var folderPath = Path.Combine(root, "customer");
+                var fileName = await _fileService.SaveBase64ImageAsync(dto.Base64Photo, folderPath);
+                customer.PhotoUrl = fileName is null ? customer.PhotoUrl : $"/uploads/customer/{fileName}";
             }
 
             // Update only provided fields
