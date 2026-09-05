@@ -24,11 +24,8 @@ namespace CommonLayer.PhotoUpload
                     Directory.CreateDirectory(folderPath);
 
                 string fileName = Guid.NewGuid().ToString() + ".png";
-                string fullPath = Path.Combine(folderPath, fileName);
-
-                await File.WriteAllBytesAsync(fullPath, imageBytes);
-
-                return fullPath; // Absolute path stored in DB
+                await File.WriteAllBytesAsync(Path.Combine(folderPath, fileName), imageBytes);
+                return fileName;
             }
             catch
             {

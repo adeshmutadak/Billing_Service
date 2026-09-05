@@ -72,6 +72,10 @@ namespace Dto.Request
         /// <summary>Paid, Unpaid or NoActivity.</summary>
         public string PaymentStatus { get; set; }
         public bool IsPaid { get; set; }
+        public decimal PreviousBalance { get; set; }
+
+        /// <summary>TotalAmount plus PreviousBalance. What was owed.</summary>
+        public decimal PayableAmount { get; set; }
 
         /// <summary>Ascending by date, then by EntryId when a date holds several
         /// entries. Empty unless IncludeDetail or Month was supplied.</summary>
