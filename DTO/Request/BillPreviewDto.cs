@@ -27,16 +27,17 @@ namespace Dto.Request
         public decimal TotalBuffaloLitre { get; set; }
         public decimal TotalAmount { get; set; }
 
-        /// <summary>Carried forward from the customer's most recent earlier bill
-        /// when that bill is not settled. It is a suggestion: PreviousBalance is
-        /// still supplied by the caller on POST, so the user can override it.</summary>
-        public decimal SuggestedPreviousBalance { get; set; }
+        /// <summary>The previous bill's TotalPayable minus its PaidAmount. Only
+        /// the immediately preceding bill is read, because its payable already
+        /// rolls up every balance before it. Not editable by the caller: the same
+        /// figure is recalculated when the bill is saved.</summary>
+        public decimal PreviousBalance { get; set; }
 
-        /// <summary>TotalAmount plus SuggestedPreviousBalance. What would be owed
-        /// if the suggestion is accepted unchanged.</summary>
+        /// <summary>TotalAmount plus PreviousBalance. What is owed.</summary>
         public decimal TotalPayable { get; set; }
 
-        /// <summary>The bill this suggestion was carried from, if any.</summary>
+        /// <summary>Which bill the balance was carried from, so the UI can say
+        /// "carried from February 2026".</summary>
         public int? PreviousBillId { get; set; }
         public int? PreviousBillMonth { get; set; }
         public int? PreviousBillYear { get; set; }
@@ -44,14 +45,19 @@ namespace Dto.Request
         // ----- The bill already saved for this period, when one exists -----
 
         /// <summary>True when a bill for this customer, year and month already
-        /// exists. Posting will recalculate it rather than create a second one,
+        /// exists. Posting recalculates it rather than creating a second one,
         /// unless it is already settled, which is refused with 409.</summary>
         public bool BillExists { get; set; }
 
         public int? BillId { get; set; }
-        public decimal? ExistingPreviousBalance { get; set; }
+        public decimal? ExistingPaidAmount { get; set; }
         public decimal? ExistingTotalPayable { get; set; }
+        public decimal? ExistingRemainingAmount { get; set; }
         public string ExistingPaymentType { get; set; }
         public bool ExistingIsPaymentDone { get; set; }
+
+        /// <summary>How many bills exist after this period. Saving this one
+        /// recalculates their previous balances, so the UI can warn first.</summary>
+        public int LaterBillCount { get; set; }
     }
 }

@@ -137,5 +137,18 @@ namespace Repository
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<List<Bill>> GetBillsAfterAsync(int customerId, int year, int month)
+        {
+            // Tracked on purpose: the service rewrites each of these in place when
+            // an earlier month's payment changes.
+            return await _context.Bills
+                .Where(b => b.CustomerId == customerId
+                         && (b.IsDeleted == false || b.IsDeleted == null)
+                         && (b.Year > year || (b.Year == year && b.Month > month)))
+                .OrderBy(b => b.Year)
+                .ThenBy(b => b.Month)
+                .ToListAsync();
+        }
     }
 }

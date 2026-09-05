@@ -14,12 +14,31 @@ namespace Service
 {
     public class BillService : IBillService
     {
+        private const string StatusPaid = "Paid";
+        private const string StatusPartial = "Partial";
+        private const string StatusUnpaid = "Unpaid";
+        private const string StatusNoActivity = "NoActivity";
+
         private readonly IBillRepo _billRepo;
 
         public BillService(IBillRepo billRepo)
         {
             _billRepo = billRepo;
         }
+
+        // ------------------------------------------------------------------
+        // The one rule the whole carry-forward chain rests on.
+        // A bill's unpaid balance is what the next bill inherits. Only the
+        // immediately preceding bill is ever read, because its TotalPayable
+        // already includes every balance carried into it, so summing older
+        // bills would count the same debt twice.
+        // ------------------------------------------------------------------
+        private static decimal RemainingOf(Bill bill) =>
+            bill == null ? 0m : Math.Max(0m, (bill.TotalPayable ?? 0m) - bill.PaidAmount);
+
+        // ==================================================================
+        // ADD BILL
+        // ==================================================================
 
         public async Task<GeneralResponse<BillResponseDto>> AddBillAsync(int userId, AddBillRequestDto dto)
         {
@@ -38,9 +57,11 @@ namespace Service
                 return Fail("Invalid year", HttpStatusCode.BadRequest);
             }
 
-            if (dto.PreviousBalance.HasValue && dto.PreviousBalance.Value < 0)
+            var paidAmount = dto.PaidAmount ?? 0m;
+
+            if (paidAmount < 0)
             {
-                return Fail("Previous balance cannot be negative", HttpStatusCode.BadRequest);
+                return Fail("Paid amount cannot be negative", HttpStatusCode.BadRequest);
             }
 
             // Ownership and existence in one check: the customer is only returned
@@ -62,8 +83,17 @@ namespace Service
             // rates, so the bill matches what the entry screen already showed.
             var totalAmount = entries.Sum(e => e.TotalAmount ?? 0);
 
-            var previousBalance = dto.PreviousBalance ?? 0m;
+            // PreviousBalance is calculated, never taken from the request, so the
+            // month-to-month chain cannot drift.
+            var previousBill = await _billRepo.GetLatestEarlierBillAsync(
+                dto.CustomerId, dto.Year, dto.Month);
+
+            var previousBalance = RemainingOf(previousBill);
             var totalPayable = totalAmount + previousBalance;
+
+            // IsPaymentDone is derived. A part payment leaves the bill open so the
+            // shortfall carries into the next month.
+            var isPaymentDone = totalPayable > 0 && paidAmount >= totalPayable;
 
             if (entries.Count == 0 && previousBalance <= 0)
             {
@@ -73,6 +103,8 @@ namespace Service
             }
 
             var existing = await _billRepo.GetBillAsync(dto.CustomerId, dto.Year, dto.Month);
+            Bill saved;
+            bool regenerated;
 
             if (existing != null)
             {
@@ -81,7 +113,7 @@ namespace Service
                 if (existing.IsPaymentDone)
                 {
                     return Fail(
-                        $"Bill {existing.BillId} for {MonthName(dto.Month)} {dto.Year} is already marked paid and cannot be regenerated",
+                        $"Bill {existing.BillId} for {MonthName(dto.Month)} {dto.Year} is already settled and cannot be regenerated",
                         HttpStatusCode.Conflict);
                 }
 
@@ -90,42 +122,88 @@ namespace Service
                 existing.TotalAmount = totalAmount;
                 existing.PreviousBalance = previousBalance;
                 existing.TotalPayable = totalPayable;
+                existing.PaidAmount = paidAmount;
                 existing.PaymentType = dto.PaymentType;
-                existing.IsPaymentDone = dto.IsPaymentDone;
+                existing.IsPaymentDone = isPaymentDone;
                 existing.UpdatedAt = DateTime.Now;
 
                 await _billRepo.UpdateBillAsync(existing);
 
-                return Ok(existing, customer.Name, entries.Count, regenerated: true,
-                    $"Bill for {MonthName(dto.Month)} {dto.Year} recalculated successfully");
+                saved = existing;
+                regenerated = true;
+            }
+            else
+            {
+                var bill = new Bill
+                {
+                    CustomerId = customer.CustomerId,
+
+                    // From the token, not the request body.
+                    UserId = userId,
+
+                    Month = dto.Month,
+                    Year = dto.Year,
+                    TotalCowLitre = totalCowLitre,
+                    TotalBuffaloLitre = totalBuffaloLitre,
+                    TotalAmount = totalAmount,
+                    PreviousBalance = previousBalance,
+                    TotalPayable = totalPayable,
+                    PaidAmount = paidAmount,
+                    PaymentType = dto.PaymentType,
+                    IsPaymentDone = isPaymentDone,
+                    IsDeleted = false,
+                    CreatedAt = DateTime.Now,
+                    UpdatedAt = DateTime.Now
+                };
+
+                saved = await _billRepo.AddBillAsync(bill);
+                regenerated = false;
             }
 
-            var bill = new Bill
+            // Editing an earlier month changes what every later month inherits,
+            // so the chain is rebuilt forward from here.
+            var forwardUpdated = await RecalculateForwardAsync(
+                dto.CustomerId, dto.Year, dto.Month, RemainingOf(saved));
+
+            var message = regenerated
+                ? $"Bill for {MonthName(dto.Month)} {dto.Year} recalculated successfully"
+                : $"Bill for {MonthName(dto.Month)} {dto.Year} generated successfully";
+
+            if (forwardUpdated > 0)
             {
-                CustomerId = customer.CustomerId,
+                message += $". {forwardUpdated} later bill{(forwardUpdated == 1 ? "" : "s")} recalculated";
+            }
 
-                // From the token, not the request body.
-                UserId = userId,
+            return Ok(saved, customer.Name, entries.Count, regenerated, forwardUpdated, message,
+                regenerated ? HttpStatusCode.OK : HttpStatusCode.Created);
+        }
 
-                Month = dto.Month,
-                Year = dto.Year,
-                TotalCowLitre = totalCowLitre,
-                TotalBuffaloLitre = totalBuffaloLitre,
-                TotalAmount = totalAmount,
-                PreviousBalance = previousBalance,
-                TotalPayable = totalPayable,
-                PaymentType = dto.PaymentType,
-                IsPaymentDone = dto.IsPaymentDone,
-                IsDeleted = false,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
-            };
+        /// <summary>Rewrites the previous balance of every bill after this period,
+        /// in order, so an edit to an earlier month cannot leave later months
+        /// carrying a stale figure. Returns how many bills were touched.</summary>
+        private async Task<int> RecalculateForwardAsync(
+            int customerId, int year, int month, decimal carry)
+        {
+            var later = await _billRepo.GetBillsAfterAsync(customerId, year, month);
+            if (later.Count == 0)
+            {
+                return 0;
+            }
 
-            var saved = await _billRepo.AddBillAsync(bill);
+            foreach (var bill in later)
+            {
+                bill.PreviousBalance = carry;
+                bill.TotalPayable = (bill.TotalAmount ?? 0m) + carry;
+                bill.IsPaymentDone = bill.TotalPayable > 0 && bill.PaidAmount >= bill.TotalPayable;
+                bill.UpdatedAt = DateTime.Now;
 
-            return Ok(saved, customer.Name, entries.Count, regenerated: false,
-                $"Bill for {MonthName(dto.Month)} {dto.Year} generated successfully",
-                HttpStatusCode.Created);
+                await _billRepo.UpdateBillAsync(bill);
+
+                // Each bill hands its own shortfall to the next.
+                carry = RemainingOf(bill);
+            }
+
+            return later.Count;
         }
 
         private static string MonthName(int month) =>
@@ -136,6 +214,7 @@ namespace Service
             string customerName,
             int entryCount,
             bool regenerated,
+            int forwardBillsUpdated,
             string message,
             HttpStatusCode code = HttpStatusCode.OK) =>
             new GeneralResponse<BillResponseDto>
@@ -157,11 +236,14 @@ namespace Service
                     TotalAmount = bill.TotalAmount ?? 0,
                     PreviousBalance = bill.PreviousBalance ?? 0,
                     TotalPayable = bill.TotalPayable ?? 0,
+                    PaidAmount = bill.PaidAmount,
+                    RemainingAmount = RemainingOf(bill),
                     PaymentType = bill.PaymentType,
                     IsPaymentDone = bill.IsPaymentDone,
                     CreatedAt = bill.CreatedAt,
                     UpdatedAt = bill.UpdatedAt,
-                    Regenerated = regenerated
+                    Regenerated = regenerated,
+                    ForwardBillsUpdated = forwardBillsUpdated
                 }
             };
 
@@ -173,11 +255,9 @@ namespace Service
                 HttpStatusCode = code
             };
 
-
-
-        private const string StatusPaid = "Paid";
-        private const string StatusUnpaid = "Unpaid";
-        private const string StatusNoActivity = "NoActivity";
+        // ==================================================================
+        // SHARED CUSTOMER AND HISTORY QUERY
+        // ==================================================================
 
         public async Task<GeneralResponse<BillHistoryResponseDto>> GetHistoryAsync(
             int userId, BillHistoryFilterDto filter)
@@ -186,8 +266,6 @@ namespace Service
             {
                 return HistoryFail("Request is required", HttpStatusCode.BadRequest);
             }
-
-           
 
             if (filter.Month.HasValue && (filter.Month < 1 || filter.Month > 12))
             {
@@ -349,24 +427,20 @@ namespace Service
 
             var bill = bills.FirstOrDefault(b => b.Year == year && b.Month == month);
 
-            // Litres and amount always come from the register.
             var totalCowLitre = monthEntries.Sum(e => e.CowLitre ?? 0);
             var totalBuffaloLitre = monthEntries.Sum(e => e.BuffaloLitre ?? 0);
             var totalAmount = monthEntries.Sum(e => e.TotalAmount ?? 0);
 
-            // Payment state comes from the bill. TotalPayable already folds in any
-            // PreviousBalance carried forward, so it wins over the entries total.
+            // A generated bill wins, because its TotalPayable already folds in the
+            // balance carried from the month before.
             var payable = bill?.TotalPayable ?? totalAmount;
-            var isPaid = bill?.IsPaymentDone ?? false;
-
-            // Without a payments table there are no instalments to sum, so a month
-            // is either settled in full or not settled at all.
-            var paidAmount = isPaid ? payable : 0m;
-            var remaining = payable - paidAmount;
+            var paidAmount = bill?.PaidAmount ?? 0m;
+            var remaining = Math.Max(0m, payable - paidAmount);
 
             string status;
             if (totalAmount <= 0 && bill == null) status = StatusNoActivity;
-            else if (isPaid) status = StatusPaid;
+            else if (paidAmount > 0 && remaining <= 0) status = StatusPaid;
+            else if (paidAmount > 0) status = StatusPartial;
             else status = StatusUnpaid;
 
             var dto = new BillHistoryMonthDto
@@ -377,9 +451,9 @@ namespace Service
                 TotalBuffaloLitre = totalBuffaloLitre,
                 TotalAmount = totalAmount,
                 PaidAmount = paidAmount,
-                RemainingAmount = remaining > 0 ? remaining : 0,
+                RemainingAmount = remaining,
                 PaymentStatus = status,
-                IsPaid = isPaid
+                IsPaid = status == StatusPaid
             };
 
             if (!includeDays)
@@ -449,13 +523,12 @@ namespace Service
                 HttpStatusCode = code
             };
 
-
-
-
-
+        // ==================================================================
+        // BILL PREVIEW
+        // ==================================================================
 
         public async Task<GeneralResponse<BillPreviewDto>> GetBillPreviewAsync(
-          int userId, int customerId, int year, int month)
+            int userId, int customerId, int year, int month)
         {
             if (month < 1 || month > 12)
             {
@@ -474,25 +547,20 @@ namespace Service
                 return PreviewFail("Customer not found", HttpStatusCode.NotFound);
             }
 
-            // Litres and amount always come from the register, exactly as
-            // AddBillAsync computes them, so the preview cannot disagree with what
-            // a subsequent POST would save.
+            // Same computation AddBillAsync performs, so the preview and the save
+            // can never disagree.
             var entries = await _billRepo.GetEntriesForMonthAsync(customerId, year, month);
 
             var totalCowLitre = entries.Sum(e => e.CowLitre ?? 0);
             var totalBuffaloLitre = entries.Sum(e => e.BuffaloLitre ?? 0);
             var totalAmount = entries.Sum(e => e.TotalAmount ?? 0);
 
-            // Suggested carry-forward. Only the most recent earlier bill is read:
-            // its TotalPayable already includes every balance before it, so summing
-            // all unsettled bills would count older balances twice.
             var previousBill = await _billRepo.GetLatestEarlierBillAsync(customerId, year, month);
-
-            var suggestedPreviousBalance = previousBill != null && !previousBill.IsPaymentDone
-                ? previousBill.TotalPayable ?? 0m
-                : 0m;
+            var previousBalance = RemainingOf(previousBill);
+            var totalPayable = totalAmount + previousBalance;
 
             var existing = await _billRepo.GetBillAsync(customerId, year, month);
+            var later = await _billRepo.GetBillsAfterAsync(customerId, year, month);
 
             var preview = new BillPreviewDto
             {
@@ -507,8 +575,8 @@ namespace Service
                 TotalBuffaloLitre = totalBuffaloLitre,
                 TotalAmount = totalAmount,
 
-                SuggestedPreviousBalance = suggestedPreviousBalance,
-                TotalPayable = totalAmount + suggestedPreviousBalance,
+                PreviousBalance = previousBalance,
+                TotalPayable = totalPayable,
 
                 PreviousBillId = previousBill?.BillId,
                 PreviousBillMonth = previousBill?.Month,
@@ -516,10 +584,13 @@ namespace Service
 
                 BillExists = existing != null,
                 BillId = existing?.BillId,
-                ExistingPreviousBalance = existing?.PreviousBalance,
+                ExistingPaidAmount = existing?.PaidAmount,
                 ExistingTotalPayable = existing?.TotalPayable,
+                ExistingRemainingAmount = existing != null ? RemainingOf(existing) : (decimal?)null,
                 ExistingPaymentType = existing?.PaymentType,
-                ExistingIsPaymentDone = existing?.IsPaymentDone ?? false
+                ExistingIsPaymentDone = existing?.IsPaymentDone ?? false,
+
+                LaterBillCount = later.Count
             };
 
             string message;
@@ -531,7 +602,7 @@ namespace Service
             {
                 message = $"A bill for {MonthName(month)} {year} exists and will be recalculated";
             }
-            else if (entries.Count == 0 && suggestedPreviousBalance <= 0)
+            else if (entries.Count == 0 && previousBalance <= 0)
             {
                 message = $"No milk entries for {MonthName(month)} {year} and no previous balance";
             }
@@ -556,8 +627,5 @@ namespace Service
                 Message = message,
                 HttpStatusCode = code
             };
-
-
-
     }
 }
