@@ -1,5 +1,4 @@
-﻿using Dto.Response;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -18,7 +17,6 @@ namespace Dto.Request
         public string? Email { get; set; }
         public decimal CowRate { get; set; }
         public decimal BuffaloRate { get; set; }
-        public List<PaymentResponseDto>paymentResponseDtos { get; set; }
         
     }
 
