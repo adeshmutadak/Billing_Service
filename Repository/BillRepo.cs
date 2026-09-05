@@ -124,6 +124,18 @@ namespace Repository
                 .ToListAsync();
         }
 
-
+        public async Task<Bill?> GetLatestEarlierBillAsync(int customerId, int year, int month)
+        {
+            // Everything strictly before (year, month), newest first.
+            // Comparing on Year and Month as integers avoids any date arithmetic.
+            return await _context.Bills
+                .Where(b => b.CustomerId == customerId
+                         && (b.IsDeleted == false || b.IsDeleted == null)
+                         && (b.Year < year || (b.Year == year && b.Month < month)))
+                .OrderByDescending(b => b.Year)
+                .ThenByDescending(b => b.Month)
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+        }
     }
 }

@@ -449,5 +449,115 @@ namespace Service
                 HttpStatusCode = code
             };
 
+
+
+
+
+
+        public async Task<GeneralResponse<BillPreviewDto>> GetBillPreviewAsync(
+          int userId, int customerId, int year, int month)
+        {
+            if (month < 1 || month > 12)
+            {
+                return PreviewFail("Month must be between 1 and 12", HttpStatusCode.BadRequest);
+            }
+
+            if (year < 2000 || year > DateTime.Now.Year + 1)
+            {
+                return PreviewFail("Invalid year", HttpStatusCode.BadRequest);
+            }
+
+            // Ownership and existence in one check.
+            var customer = await _billRepo.GetCustomerAsync(userId, customerId);
+            if (customer == null)
+            {
+                return PreviewFail("Customer not found", HttpStatusCode.NotFound);
+            }
+
+            // Litres and amount always come from the register, exactly as
+            // AddBillAsync computes them, so the preview cannot disagree with what
+            // a subsequent POST would save.
+            var entries = await _billRepo.GetEntriesForMonthAsync(customerId, year, month);
+
+            var totalCowLitre = entries.Sum(e => e.CowLitre ?? 0);
+            var totalBuffaloLitre = entries.Sum(e => e.BuffaloLitre ?? 0);
+            var totalAmount = entries.Sum(e => e.TotalAmount ?? 0);
+
+            // Suggested carry-forward. Only the most recent earlier bill is read:
+            // its TotalPayable already includes every balance before it, so summing
+            // all unsettled bills would count older balances twice.
+            var previousBill = await _billRepo.GetLatestEarlierBillAsync(customerId, year, month);
+
+            var suggestedPreviousBalance = previousBill != null && !previousBill.IsPaymentDone
+                ? previousBill.TotalPayable ?? 0m
+                : 0m;
+
+            var existing = await _billRepo.GetBillAsync(customerId, year, month);
+
+            var preview = new BillPreviewDto
+            {
+                CustomerId = customer.CustomerId,
+                CustomerName = customer.Name,
+                Month = month,
+                MonthName = MonthName(month),
+                Year = year,
+
+                EntryCount = entries.Count,
+                TotalCowLitre = totalCowLitre,
+                TotalBuffaloLitre = totalBuffaloLitre,
+                TotalAmount = totalAmount,
+
+                SuggestedPreviousBalance = suggestedPreviousBalance,
+                TotalPayable = totalAmount + suggestedPreviousBalance,
+
+                PreviousBillId = previousBill?.BillId,
+                PreviousBillMonth = previousBill?.Month,
+                PreviousBillYear = previousBill?.Year,
+
+                BillExists = existing != null,
+                BillId = existing?.BillId,
+                ExistingPreviousBalance = existing?.PreviousBalance,
+                ExistingTotalPayable = existing?.TotalPayable,
+                ExistingPaymentType = existing?.PaymentType,
+                ExistingIsPaymentDone = existing?.IsPaymentDone ?? false
+            };
+
+            string message;
+            if (existing != null && existing.IsPaymentDone)
+            {
+                message = $"Bill for {MonthName(month)} {year} is already settled";
+            }
+            else if (existing != null)
+            {
+                message = $"A bill for {MonthName(month)} {year} exists and will be recalculated";
+            }
+            else if (entries.Count == 0 && suggestedPreviousBalance <= 0)
+            {
+                message = $"No milk entries for {MonthName(month)} {year} and no previous balance";
+            }
+            else
+            {
+                message = "Preview generated successfully";
+            }
+
+            return new GeneralResponse<BillPreviewDto>
+            {
+                Success = true,
+                Message = message,
+                HttpStatusCode = HttpStatusCode.OK,
+                Data = preview
+            };
+        }
+
+        private static GeneralResponse<BillPreviewDto> PreviewFail(string message, HttpStatusCode code) =>
+            new GeneralResponse<BillPreviewDto>
+            {
+                Success = false,
+                Message = message,
+                HttpStatusCode = code
+            };
+
+
+
     }
 }
