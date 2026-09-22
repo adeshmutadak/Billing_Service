@@ -109,6 +109,11 @@ app.UseStaticFiles(new StaticFileOptions
 
 if (app.Environment.IsDevelopment())
 {
+    app.UseHttpsRedirection();
+}
+
+if (app.Environment.IsDevelopment())
+{
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -120,5 +125,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 
 app.Run();
