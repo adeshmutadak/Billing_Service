@@ -3,6 +3,7 @@ using CommonLayer.PhotoUpload;
 using Dataaa.Request;
 using Dataaa.Response;
 using Dto.Request;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Service;
@@ -36,6 +37,15 @@ namespace MilkBilling.Controllers
         {
             var response = await _authService.LoginUser(request);
             return response;
+        }
+
+
+        [Authorize]
+        [HttpPost("logout")]
+        public async Task<BaseResponse> LogoutUser()
+        {
+            var userId = int.Parse(User.FindFirst("UserId")!.Value);
+            return await _authService.LogoutUser(userId);
         }
     }
 }

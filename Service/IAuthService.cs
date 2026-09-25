@@ -14,5 +14,6 @@ namespace Service
     {
         Task<BaseResponse> RegisterUser(RegistrationRequestDto request);
         Task<GeneralResponse<LoginResponse>> LoginUser(LogRequest request);
+        Task<BaseResponse> LogoutUser(int userId);
     }
 }
