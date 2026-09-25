@@ -129,6 +129,19 @@ namespace Service
             };
         }
 
+        public async Task<BaseResponse> LogoutUser(int userId)
+        {
+            // Nothing to tear down: the token is stateless and is discarded by
+            // the client. This endpoint exists so the app has one call to make
+            // on logout, and so the action can be logged or extended later.
+            await Task.CompletedTask;
 
+            return new BaseResponse
+            {
+                Success = true,
+                Message = "Logout successful",
+                HttpStatusCode = System.Net.HttpStatusCode.OK
+            };
+        }
     }
 }
